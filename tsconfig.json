@@ -1,0 +1,29 @@
+{
+    "compilerOptions": {
+        "target": "ESNext",
+        "module": "ESNext",
+        "outDir": "dist",
+        "rootDir": "src",
+        "strict": true,
+        "esModuleInterop": true,
+        "moduleResolution": "node",
+        /* Experimental Options */
+        "experimentalDecorators": true /* Enables experimental support for ES7 decorators. */,
+        "emitDecoratorMetadata": true /* Enables experimental support for emitting type metadata for decorators. */,
+        /* Advanced Options */
+        "skipLibCheck": false,
+        /* Additional Checks */
+        "noImplicitAny": true, /* Report errors on implied `any` */
+        "noUnusedLocals": true, /* Report errors on unused locals. */
+        "noUnusedParameters": true, /* Report errors on unused parameters. */
+        "noImplicitReturns": true, /* Report error when not all code paths in function return a value. */
+        "noFallthroughCasesInSwitch": true, /* Report errors for fallthrough cases in switch statement. */
+        "forceConsistentCasingInFileNames": true,
+        /* Enable importing json files */
+        "resolveJsonModule": true
+    },
+    "exclude": [
+        "dist",
+        "node_modules"
+    ]
+}
