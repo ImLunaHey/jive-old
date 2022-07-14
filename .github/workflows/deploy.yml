@@ -1,0 +1,41 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Add the host key
+        run: |
+          mkdir -p ~/.ssh/ && echo "${{ secrets.DEPLOY_KNOWN_HOSTS }}" >> ~/.ssh/known_hosts
+
+      - name: Load private SSH key
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: SSH Deploy
+        run: |
+          ssh ${{ secrets.DEPLOY_USERNAME }}@${{ secrets.DEPLOY_HOST }} -p ${{ secrets.DEPLOY_PORT }} << EOF
+            # Enter the main directory
+            cd ${{ secrets.DEPLOY_FILE_PATH }} 
+            # On first run clone the repo
+            [ ! -d "./${{ github.repository }}" ] && ssh-keyscan -H github.com > ~/.ssh/known_hosts && git clone git@github.com:${{ github.repository }}.git ${{ github.repository }}
+            # Enter project directory
+            cd ${{ github.repository }}
+            # Make sure the install it up to date
+            git add -A && git reset --hard origin/${{ github.ref_name }} && git pull
+            # Make sure the .env is up to date
+            (echo "${{ secrets.ENV_FILE }}"; cat .env) > .full_env && mv .full_env .env
+            # Reload services with or without the env.sh
+            [ -f ./.scripts/env.sh ] && source ./.scripts/env.sh && docker compose up -d
+            [ ! -f ./.scripts/env.sh ] && docker compose up -d || exit 0
+          EOF

@@ -1,0 +1,12 @@
+version: '3.7'
+
+services:
+  caddy:
+    image: imlunahey/jive:latest
+    build: .
+    container_name: jive
+    hostname: jive
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - BOT_TOKEN=$BOT_TOKEN
