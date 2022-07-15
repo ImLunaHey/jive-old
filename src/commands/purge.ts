@@ -50,6 +50,9 @@ export class PurgeCommand {
                 
                 // false - Member is verified
                 if (member.roles.cache.find(role => role.name.toLowerCase().includes('verified')) !== undefined) return false;
+
+                // false - Member has SFW verification
+                if (member.roles.cache.find(role => role.name.toLowerCase().includes('[sfw only]')) !== undefined) return false;
                 
                 // false - Member is trusted
                 if (member.roles.cache.find(role => role.name.toLowerCase().includes('trusted')) !== undefined) return false;
@@ -83,6 +86,7 @@ export class PurgeCommand {
             await Promise.allSettled(purgeableMembers.map(async member => {
                 logger.debug(`${dryRun ? '[DRY-RUN] ' : ''}Kicking ${member.displayName} - ${prettyMilliseconds(Date.now() - (member.joinedTimestamp ?? 0))} - ${member.roles.cache.map(role => role.name).join(', ')}`);        
                 if (!dryRun) await member.kick();
+                logger.debug(`${dryRun ? '[DRY-RUN] ' : ''}Kicked ${member.displayName} - ${prettyMilliseconds(Date.now() - (member.joinedTimestamp ?? 0))} - ${member.roles.cache.map(role => role.name).join(', ')}`);    
             }));
             await interaction.editReply(`${dryRun ? '[DRY-RUN] ' : ''}Kicked ${purgeableMembers.length}/${totalMembers.size} members. :white_check_mark:`);
         } finally {
