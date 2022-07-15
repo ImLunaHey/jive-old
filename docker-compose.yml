@@ -6,7 +6,7 @@ services:
     build: .
     container_name: jive
     hostname: jive
-    restart: unless-stopped
+    restart: always
     env_file: .env
     environment:
       - BOT_TOKEN=$BOT_TOKEN
