@@ -31,13 +31,17 @@ jobs:
             [ ! -d "./${{ github.repository }}" ] && ssh-keyscan -H github.com > ~/.ssh/known_hosts && git clone git@github.com:${{ github.repository }}.git ${{ github.repository }}
             # Enter project directory
             cd ${{ github.repository }}
-            # Make sure the install it up to date
+            # Make sure the install is up to date
             git add -A && git reset --hard origin/${{ github.ref_name }} && git pull
             # Create secrets .env
             echo "${{ secrets.ENV_FILE }}" > .secrets.env
             # Generate full .env
             sort -u -t '=' -k 1,1 .secrets.env .template.env | grep -Ev '(#.*$)|(^$)' > .env
-            # Reload services with or without the env.sh
-            [ -f ./.scripts/env.sh ] && source ./.scripts/env.sh && docker compose up -d
-            [ ! -f ./.scripts/env.sh ] && docker compose up -d || exit 0
+            # Load the env.sh
+            if [ -f ./.scripts/env.sh ]
+            then
+              source ./.scripts/env.sh
+            fi
+            # Reload services
+            docker compose up -d --build
           EOF
