@@ -8,6 +8,7 @@ export type ItemPriceHistory = {
 export type Item = {
     uuid: string;
     name: string;
+    emote: string;
     description: string;
     price: number;
     priceHistory: ItemPriceHistory[];
