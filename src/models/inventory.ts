@@ -37,4 +37,14 @@ export class InventoryModel {
 
         return user;
     }
+
+    static async update(guildId: string, userId: string, data: Inventory) {
+        const inventoryModel = await getInventoryModel();
+        const [inventory] = await inventoryModel.updateOrCreate({
+            guildId,
+            userId
+        }, data);
+
+        return inventory;
+    }
 }

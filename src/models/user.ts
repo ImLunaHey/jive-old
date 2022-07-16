@@ -36,4 +36,14 @@ export class UserModel {
 
         return user;
     }
+
+    static async update(guildId: string, userId: string, data: User) {
+        const userModel = await getUserModel();
+        const [user] = await userModel.updateOrCreate({
+            guildId,
+            userId
+        }, data);
+
+        return user;
+    }
 }
