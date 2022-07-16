@@ -4,6 +4,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 # Install python deps
 RUN apk add --update --no-cache \
+    python2 \
     python3 \
     make \
     g++ \
