@@ -27,12 +27,14 @@ export class WalletCommand {
 
             // Send user their wallet balance
             await interaction.reply({
-                content: `You have \`${formatCurrency(user.balance, currency)}\``
+                content: `You have \`${formatCurrency(user.balance, currency)}\``,
+                ephemeral: true
             });
         } catch (error: unknown) {
             if (!(error instanceof Error)) throw new Error(format('Unknown Error "%s"', error));
             await interaction.reply({
-                content: format('Failed running command "wallet" with "%s"', error.message)
+                content: format('Failed running command "wallet" with "%s"', error.message),
+                ephemeral: true
             });
         }
     }
