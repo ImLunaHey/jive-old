@@ -7,6 +7,7 @@ import { ItemModel } from '../models/items.js';
 import { PriceHistoryModel } from '../models/price-history.js';
 import { VM } from 'vm2';
 import { randomUUID } from 'crypto';
+import YAML from 'yaml';
 
 const createMetadataVm = () => {
     const vm = new VM();
@@ -71,8 +72,89 @@ export class StoreCommands {
         description: 'Inspect a single item in the server\'s store'
     })
     @SlashGroup('store')
-    async inspect(interaction: CommandInteraction) {
-        await interaction.reply({ content: 'hi' });
+    async inspect(
+        @SlashOption('item', {
+            type: 'STRING',
+            description: 'The item you want to inspect',
+            required: true,
+            autocomplete: true
+        }) itemUUIDOrSearchTerm: string,
+        interaction: CommandInteraction | AutocompleteInteraction
+    ) {
+        if (isAutocompleteInteraction(interaction)) {
+            try {
+                const { guildId } = interaction;
+
+                // Ensure this is only run in guilds
+                if (!guildId) throw new CommandError('This command can only be run in a guild');
+
+                // Get server's items
+                const items = await ItemModel.find({ guildId, userId: undefined });
+
+                // Respond with a list of items
+                await interaction.respond(items.filter(item => item.name.toLowerCase().startsWith(itemUUIDOrSearchTerm)).slice(0, 10).map(item => ({ name: item.name, value: item.uuid })));
+            } catch (error: unknown) {
+                if (!(error instanceof Error)) throw new Error(format('Unknown Error "%s"', error));
+                throw error;
+            }
+
+            return;
+        }
+
+        try {
+            const { guildId } = interaction;
+
+            // Ensure this is only run in guilds
+            if (!guildId) throw new CommandError('This command can only be run in a guild.');
+
+            // Show the bot thinking...
+            await interaction.deferReply({ ephemeral: true });
+
+            // Fetch item for this server
+            const item = await ItemModel.findOne({
+                uuid: itemUUIDOrSearchTerm
+            });
+
+            // Check if the item exists in the user's inventory
+            if (!item) throw new CommandError('Couldn\'t find that item in the store.');
+
+            // Get the highest price this item has ever been sold for
+            const highestPrice = await PriceHistoryModel.mostExpensiveSale(guildId, item.itemId);
+
+            // Reply with the item
+            await interaction.editReply({
+                // @todo include a chart of price history
+                // github: svg2img@next
+                // npm: svg-line-chart
+                embeds: [new MessageEmbed({
+                    color: 233424,
+                    title: item.name,
+                    fields: [{
+                        name: 'Description',
+                        value: item.description
+                    }, {
+                        name: 'Purchase price',
+                        value: `${item.price}`
+                    }, {
+                        name: 'Highest known price',
+                        value: `${highestPrice}`
+                    }, {
+                        name: 'Metadata',
+                        value: '```\n' + YAML.stringify(JSON.parse(item.metadata)) + '\n```'
+                    }]
+                })]
+            });
+        } catch (error: unknown) {
+            if (!(error instanceof Error)) throw new Error(format('Unknown Error "%s"', error));
+            if (error instanceof CommandError) return interaction.reply({
+                content: error.message,
+                ephemeral: true
+            });
+            return interaction.reply({
+                content: format('Failed running command with "%s"', error.message),
+                ephemeral: true
+            });
+        }
     }
 
     @Slash('add', {
@@ -83,8 +165,8 @@ export class StoreCommands {
         @SlashOption('name', { type: 'STRING', description: 'The item\'s name', required: true }) name: string,
         @SlashOption('description', { type: 'STRING', description: 'The item\'s description', required: true }) description: string,
         @SlashOption('price', { type: 'NUMBER', description: 'The item\'s current price', required: true }) price: number,
-        @SlashOption('metadata', { type: 'STRING', description: 'The item\'s metadata generator', required: false }) metadata: string,
-        @SlashOption('count', { type: 'NUMBER', minValue: 1, description: 'How many of the item to add to the store? (default=1)', required: false }) count: number,
+        @SlashOption('metadata', { type: 'STRING', description: 'The item\'s metadata generator', required: false }) metadata: string = '',
+        @SlashOption('count', { type: 'NUMBER', minValue: 1, description: 'How many of the item to add to the store? (default=1)', required: false }) count: number = 1,
         interaction: CommandInteraction
     ) {
         try {
