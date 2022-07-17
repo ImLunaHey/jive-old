@@ -1,6 +1,8 @@
 import { CommandInteraction } from 'discord.js';
 import { Discord, Slash, SlashOption } from 'discordx';
 import prettyMilliseconds from 'pretty-ms';
+import { format } from 'util';
+import { CommandError } from '../common/command-error.js';
 import { logger } from '../common/logger.js';
 
 /** Twenty minutes in milliseconds */
@@ -21,26 +23,18 @@ export class PurgeCommand {
         @SlashOption('dry-run', { type: 'BOOLEAN', description: 'Should this be a dry-run?', required: false }) dryRun: boolean = true,
         interaction: CommandInteraction
     ) {
-        if (this.isPurgeRunning) {
-            return interaction.reply({
-                content: 'A purge is already running, please wait for that to finish first.',
-                ephemeral: true
-            });
-        }
-
-        // Ensure we're running this in a guild
-        if (!interaction.guild) return interaction.reply({
-            content: 'This must be used in a guild.',
-            ephemeral: true
-        });
-
-        // If the guild everyone role is missing then fetch it
-        if (!interaction.guild?.roles.everyone) await interaction.guild?.roles.fetch();
-
-        // Make sure to fetch all current members
-        await interaction.guild.members.fetch();
-
         try {
+            if (this.isPurgeRunning) throw new CommandError('A purge is already running, please wait for that to finish first.');
+
+            // Ensure we're running this in a guild
+            if (!interaction.guild) throw new CommandError('This must be used in a guild.');
+    
+            // If the guild everyone role is missing then fetch it
+            if (!interaction.guild?.roles.everyone) await interaction.guild?.roles.fetch();
+    
+            // Make sure to fetch all current members
+            await interaction.guild.members.fetch();
+
             this.isPurgeRunning = true;
       
             const totalMembers = interaction.guild.members.cache.filter(member => {
@@ -89,6 +83,16 @@ export class PurgeCommand {
                 logger.debug(`${dryRun ? '[DRY-RUN] ' : ''}Kicked ${member.displayName} - ${prettyMilliseconds(Date.now() - (member.joinedTimestamp ?? 0))} - ${member.roles.cache.map(role => role.name).join(', ')}`);    
             }));
             await interaction.editReply(`${dryRun ? '[DRY-RUN] ' : ''}Kicked ${purgeableMembers.length}/${totalMembers.size} members. :white_check_mark:`);
+        } catch (error: unknown) {
+            if (!(error instanceof Error)) throw new Error(format('Unknown Error "%s"', error));
+            if (error instanceof CommandError) return interaction.reply({
+                content: error.message,
+                ephemeral: true
+            });
+            return interaction.reply({
+                content: format('Failed running command with "%s"', error.message),
+                ephemeral: true
+            });
         } finally {
             this.isPurgeRunning = false;
         }

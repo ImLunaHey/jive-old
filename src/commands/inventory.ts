@@ -1,7 +1,8 @@
 import { format } from 'util';
-import { CommandInteraction } from 'discord.js';
+import { CommandInteraction, MessageEmbed } from 'discord.js';
 import { Discord, Slash, SlashGroup } from 'discordx';
 import { InventoryModel } from '../models/inventory.js';
+import { CommandError } from '../common/command-error.js';
 
 @Discord()
 @SlashGroup({ name: 'inventory', description: 'User\'s inventory' })
@@ -25,12 +26,20 @@ export class InventoryCommand {
 
             // Send user their wallet balance
             await interaction.reply({
-                content: 'Here are the items in your inventory'
+                embeds: [new MessageEmbed({
+                    description: 'Here are the items in your inventory\n' + JSON.stringify(user.items)
+                })],
+                ephemeral: true
             });
         } catch (error: unknown) {
             if (!(error instanceof Error)) throw new Error(format('Unknown Error "%s"', error));
-            await interaction.reply({
-                content: format('Failed running command "wallet" with "%s"', error.message)
+            if (error instanceof CommandError) return interaction.reply({
+                content: error.message,
+                ephemeral: true
+            });
+            return interaction.reply({
+                content: format('Failed running command with "%s"', error.message),
+                ephemeral: true
             });
         }
     }
@@ -40,6 +49,18 @@ export class InventoryCommand {
     })
     @SlashGroup('inventory')
     async inspect(interaction: CommandInteraction) {
-        await interaction.reply({ content: 'hi' });
+        try {
+            await interaction.reply({ content: 'hi' });
+        } catch (error: unknown) {
+            if (!(error instanceof Error)) throw new Error(format('Unknown Error "%s"', error));
+            if (error instanceof CommandError) return interaction.reply({
+                content: error.message,
+                ephemeral: true
+            });
+            return interaction.reply({
+                content: format('Failed running command with "%s"', error.message),
+                ephemeral: true
+            });
+        }
     }
 }
