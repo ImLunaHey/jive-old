@@ -1,6 +1,6 @@
 import { format } from 'util';
 import { CommandInteraction } from 'discord.js';
-import { Discord, Slash } from 'discordx';
+import { Discord, Slash, SlashChoice, SlashOption } from 'discordx';
 import { UserModel } from '../models/user.js';
 import { CommandError } from '../common/command-error.js';
 import { ItemModel } from '../models/items.js';
@@ -15,6 +15,13 @@ export class WalletCommand {
         description: 'Shows your current wallet balance'
     })
     async wallet(
+        @SlashChoice({ name: 'everyone', value: 'false' })
+        @SlashChoice({ name: 'just me', value: 'true' })
+        @SlashOption('privacy', {
+            type: 'STRING',
+            description: 'Should this be shown to all users or just you? (default is just you)',
+            required: false
+        }) ephemeral: 'true' | 'false' = 'true',
         interaction: CommandInteraction
     ) {
         try {
@@ -23,6 +30,9 @@ export class WalletCommand {
             // Ensure this is only run in guilds
             if (!guildId) throw new CommandError('This command can only be run in a guild');
 
+            // Show the bot thinking...
+            await interaction.deferReply({ ephemeral: ephemeral === 'true' });
+
             const currency = '$';
 
             // Fetch or create the user
@@ -30,19 +40,16 @@ export class WalletCommand {
             if (!user) throw new CommandError('Failed to fetch or create a user');
 
             // Send user their wallet balance
-            await interaction.reply({
-                content: `You have \`${formatCurrency(user.balance, currency)}\``,
-                ephemeral: true
+            await interaction.editReply({
+                content: `You have \`${formatCurrency(user.balance, currency)}\``
             });
         } catch (error: unknown) {
             if (!(error instanceof Error)) throw new Error(format('Unknown Error "%s"', error));
-            if (error instanceof CommandError) return interaction.reply({
-                content: error.message,
-                ephemeral: true
+            if (error instanceof CommandError) return interaction.editReply({
+                content: error.message
             });
             return interaction.reply({
-                content: format('Failed running command with "%s"', error.message),
-                ephemeral: true
+                content: format('Failed running command with "%s"', error.message)
             });
         }
     }
