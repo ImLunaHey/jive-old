@@ -18,7 +18,16 @@ const main = async () => {
   await importFiles(`${dirnameImporter(import.meta.url)}/{events,commands,api}/**/*.{ts,js}`);
 
   // Create the discord.js client
-  const client = createDiscordClient(name, { intents: [Intents.FLAGS.GUILD_MEMBERS], partials: [], prefix: `$${name}` });
+  const client = createDiscordClient(name, {
+    intents: [
+      Intents.FLAGS.GUILD_MEMBERS,
+      Intents.FLAGS.GUILDS,
+      Intents.FLAGS.GUILD_MESSAGES,
+      Intents.FLAGS.GUILD_MESSAGE_REACTIONS
+    ],
+    partials: ['MESSAGE', 'CHANNEL', 'REACTION'],
+    prefix: `$${name}`
+  });
 
   // Connect to the discord gateway
   await client.login(botToken);

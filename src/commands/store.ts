@@ -1,11 +1,30 @@
 import { format } from 'util';
-import { CommandInteraction, MessageEmbed } from 'discord.js';
+import { AutocompleteInteraction, CommandInteraction, MessageEmbed } from 'discord.js';
 import { Discord, Slash, SlashGroup, SlashOption } from 'discordx';
-import { StoreModel } from '../models/store.js';
-import { randomUUID } from '../common/random-uuid.js';
-import { InventoryModel } from '../models/inventory.js';
 import { UserModel } from '../models/user.js';
 import { CommandError } from '../common/command-error.js';
+import { ItemModel } from '../models/items.js';
+import { PriceHistoryModel } from '../models/price-history.js';
+import { VM } from 'vm2';
+import { randomUUID } from 'crypto';
+
+const createMetadataVm = () => {
+    const vm = new VM();
+    vm.freeze({
+        get randomUUID() {
+            return randomUUID();
+        },
+        getRandomNumber(min: number, max: number) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        },
+        randomItem(array: any[]) {
+            return array[Math.floor(Math.random() * array.length)];
+        }
+    }, 'utils');
+    return vm;
+};
+
+const isAutocompleteInteraction = (interaction: CommandInteraction | AutocompleteInteraction): interaction is AutocompleteInteraction => interaction.isAutocomplete();
 
 @Discord()
 @SlashGroup({ name: 'store', description: 'The server\'s store' })
@@ -24,14 +43,13 @@ export class StoreCommands {
             if (!guildId) throw new CommandError('This command can only be run in a guild');
 
             // Fetch or create the store
-            const store = await StoreModel.findOne(guildId) ?? await StoreModel.create(guildId);
-            if (!store) throw new CommandError('Failed to fetch or create a the guild\'s store');
+            const items = await ItemModel.find({ guildId, userId: undefined });
 
             // Send user a list of items in the store
             await interaction.reply({
                 embeds: [new MessageEmbed({
-                    description: 'Here are the items in the store\n' + store.items.map(item => {
-                        return `\`[${item.uuid}]\` **${item.name}** - ${item.description} [$${item.price}]`
+                    description: 'Here are the items in the store\n' + items.map(item => {
+                        return `**${item.name}** - ${item.description} (x${items.filter(({ itemId }) => item.itemId === itemId).length}) [$${item.price}]`
                     }).join('\n')
                 })],
                 ephemeral: true
@@ -63,9 +81,10 @@ export class StoreCommands {
     @SlashGroup('store')
     async add(
         @SlashOption('name', { type: 'STRING', description: 'The item\'s name', required: true }) name: string,
-        @SlashOption('emote', { type: 'STRING', description: 'The item\'s emote', required: true }) emote: string,
         @SlashOption('description', { type: 'STRING', description: 'The item\'s description', required: true }) description: string,
-        @SlashOption('price', { type: 'STRING', description: 'The item\'s current price', required: true }) price: number,
+        @SlashOption('price', { type: 'NUMBER', description: 'The item\'s current price', required: true }) price: number,
+        @SlashOption('metadata', { type: 'STRING', description: 'The item\'s metadata generator', required: false }) metadata: string,
+        @SlashOption('count', { type: 'NUMBER', minValue: 1, description: 'How many of the item to add to the store? (default=1)', required: false }) count: number,
         interaction: CommandInteraction
     ) {
         try {
@@ -74,22 +93,26 @@ export class StoreCommands {
             // Ensure this is only run in guilds
             if (!guildId) throw new CommandError('This command can only be run in a guild');
 
-            // Fetch or create the store
-            const store = await StoreModel.findOne(guildId) ?? await StoreModel.create(guildId);
-            if (!store) throw new CommandError('Failed to fetch or create a the guild\'s store');
+            // Resolve the metadata
+            // If it's a URL fetch the URL contents
+            const metadataCode = metadata.startsWith('http') ? await fetch(metadata, { method: 'GET' }).then(response => response.text()) : metadata;
 
-            // Add item to the store
-            store.items.push({
-                name,
-                emote,
-                description,
-                uuid: randomUUID(),
-                priceHistory: [],
-                price
-            });
-
-            // Save the store
-            await StoreModel.update(guildId, store);
+            // Generate the item ID
+            const itemId = randomUUID();
+            
+            // Add $count items to the store
+            for (let index = 0; index < count; index++) {
+                // Add item to the store
+                await ItemModel.create({
+                    guildId,
+                    userId: undefined,
+                    itemId,
+                    name,
+                    description,
+                    price,
+                    metadata: JSON.stringify(createMetadataVm().run(`(${metadataCode})`))
+                });
+            }
 
             // Tell the user the item was added to the store
             await interaction.reply({
@@ -114,22 +137,49 @@ export class StoreCommands {
     })
     @SlashGroup('store')
     async buy(
-        @SlashOption('uuid', { type: 'STRING', description: 'The item\'s uuid', required: true }) uuid: string,
-        interaction: CommandInteraction
+        @SlashOption('item', {
+            type: 'STRING',
+            description: 'The item you want to buy',
+            required: true,
+            autocomplete: true
+        }) itemIdOrSearchTerm: string,
+        interaction: CommandInteraction | AutocompleteInteraction
     ) {
+        if (isAutocompleteInteraction(interaction)) {
+            try {
+                const { guildId } = interaction;
+
+                // Ensure this is only run in guilds
+                if (!guildId) throw new CommandError('This command can only be run in a guild');
+
+                // Get server's items
+                const items = await ItemModel.find({ guildId, userId: undefined });
+
+                // Respond with a list of items
+                await interaction.respond(items.filter(item => item.name.toLowerCase().startsWith(itemIdOrSearchTerm)).slice(0, 10).map(item => ({ name: item.name, value: item.itemId })));
+            } catch (error: unknown) {
+                if (!(error instanceof Error)) throw new Error(format('Unknown Error "%s"', error));
+                throw error;
+            }
+
+            return;
+        }
+
         try {
             const { guildId, user: { id: userId } } = interaction;
 
             // Ensure this is only run in guilds
-            if (!guildId) throw new CommandError('This command can only be run in a guild');
+            if (!guildId) throw new CommandError('This command can only be run in a guild.');
 
-            // Fetch or create the store
-            const store = await StoreModel.findOne(guildId) ?? await StoreModel.create(guildId);
-            if (!store) throw new CommandError('Failed to fetch or create a the guild\'s store');
+            // Fetch item for this server
+            const item = await ItemModel.findOne({
+                guildId,
+                userId: undefined,
+                itemId: itemIdOrSearchTerm
+            });
 
             // Check if the item exists in the store
-            const item = store.items.find(item => item.uuid === uuid);
-            if (!item) throw new CommandError('Invalid UUID, no item found in the store');
+            if (!item) throw new CommandError('Couldn\'t find that item in the store.');
 
             // Fetch or create the user
             const user = await UserModel.findOne(guildId, userId) ?? await UserModel.create(guildId, userId);
@@ -144,34 +194,29 @@ export class StoreCommands {
             // Save the user
             await UserModel.update(guildId, userId, user);
 
-            // Remove item from the store
-            store.items = store.items.splice(store.items.indexOf(item), 1);
-
-            // Save the store
-            await StoreModel.update(guildId, store);
+            // Change the item's owner
+            await ItemModel.update({
+                guildId,
+                userId: undefined,
+                itemId: itemIdOrSearchTerm,
+                uuid: item.uuid
+            }, {
+                userId
+            });
 
             // Add this purchase to the item's price history
-            item.priceHistory.unshift({
+            await PriceHistoryModel.create({
+                guildId,
+                itemId: itemIdOrSearchTerm,
                 buyer: `member:${interaction.user.id}`,
                 date: new Date(),
                 price: item.price,
                 seller: `guild:${guildId}`
             });
-            
-            // Fetch or create the user's inventory
-            const inventory = await InventoryModel.findOne(guildId, userId) ?? await InventoryModel.create(guildId, userId);
-            if (!inventory) throw new CommandError('Failed to fetch or create a user\'s inventory');
-
-            // Add the item to the user's inventory
-            inventory.items.push(item);
-
-            // Save the inventory
-            await InventoryModel.update(guildId, userId, inventory);
 
             // Tell the user the item was purchased
             await interaction.reply({
-                content: `**${item.name}** - "${item.description}" has been purchased for $${item.price}`,
-                ephemeral: true
+                content: `Purchased **${item.name}** - "${item.description}" for $${item.price}`
             });
         } catch (error: unknown) {
             if (!(error instanceof Error)) throw new Error(format('Unknown Error "%s"', error));
