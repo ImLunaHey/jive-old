@@ -93,6 +93,9 @@ export class StoreCommands {
             // Ensure this is only run in guilds
             if (!guildId) throw new CommandError('This command can only be run in a guild');
 
+            // Defer the reply for when we finish
+            await interaction.deferReply({ ephemeral: true });
+
             // Resolve the metadata
             // If it's a URL fetch the URL contents
             const metadataCode = metadata.startsWith('http') ? await fetch(metadata, { method: 'GET' }).then(response => response.text()) : metadata;
@@ -115,9 +118,8 @@ export class StoreCommands {
             }
 
             // Tell the user the item was added to the store
-            await interaction.reply({
-                content: `**${name}** - "${description}" has been added to the store for $${price}`,
-                ephemeral: true
+            await interaction.editReply({
+                content: `**${name}** - "${description}" has been added to the store for $${price}`
             });
         } catch (error: unknown) {
             if (!(error instanceof Error)) throw new Error(format('Unknown Error "%s"', error));
@@ -125,9 +127,8 @@ export class StoreCommands {
                 content: error.message,
                 ephemeral: true
             });
-            return interaction.reply({
-                content: format('Failed running command with "%s"', error.message),
-                ephemeral: true
+            return interaction.editReply({
+                content: format('Failed running command with "%s"', error.message)
             });
         }
     }
