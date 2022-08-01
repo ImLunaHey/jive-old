@@ -1,29 +1,42 @@
 import { Discord, On } from 'discordx';
 import type { ArgsOf } from 'discordx';
 import { logger } from '../common/logger.js';
-
-const threadOwners = {
-    '979291390162894918': '802440261543264288',
-    '1003029764128374904': '699464544078266388'
-};
+import { GuildEmoji, Message, PartialMessage, PartialUser, ReactionEmoji, User } from 'discord.js';
 
 @Discord()
 export class Pin {
-    @On('messageReactionAdd')
-    async messageReactionAdd([{ message, emoji }, user]: ArgsOf<'messageReactionAdd'>): Promise<void> {
+    @On('messageCreate')
+    async messageCreate([message]: ArgsOf<'messageCreate'>) {
+        // Remove message saying we pinned the item
+        if (message.author.bot && message.type === 'CHANNEL_PINNED_MESSAGE') await message.delete();
+    }
+
+    async hasPermission(message: Message<boolean> | PartialMessage, emoji: GuildEmoji | ReactionEmoji, user: User | PartialUser) {
         // Must be in a guild
-        if (!message.guild?.id) return;
+        if (!message.guild?.id) return false;
 
         // Must be in a thread
-        if (!message.channel || !message.channel.isThread()) return;
+        if (!message.channel || !message.channel.isThread()) return false;
 
         // Must be a pin reaction
-        if (emoji.name !== '📌') return;
+        if (emoji.name !== '📌') return false;
 
         // This must be the owner of the thread or someone who has permission to pin messages
-        const isThreadOwner = threadOwners[message.channel.id as keyof typeof threadOwners] === user.id;
+        const firstMessage = await message.channel.messages.fetch({
+            after: '1',
+            limit: 1
+        }).then(messages => messages.first());
+
+        const isThreadOwner = firstMessage?.author.id === user.id;
         const hasPermissions = message.guild?.members.resolve(user.id)?.permissions.has('MANAGE_MESSAGES');
-        if (!isThreadOwner && !hasPermissions) return;
+        if (!isThreadOwner && !hasPermissions) return false;
+
+        return true;
+    }
+
+    @On('messageReactionAdd')
+    async messageReactionAdd([{ message, emoji }, user]: ArgsOf<'messageReactionAdd'>): Promise<void> {
+        if (!this.hasPermission(message, emoji, user)) return;
 
         // Pin message
         try {
@@ -37,19 +50,7 @@ export class Pin {
 
     @On('messageReactionRemove')
     async messageReactionRemove([{ message, emoji }, user]: ArgsOf<'messageReactionRemove'>): Promise<void> {
-        // Must be in a guild
-        if (!message.guild?.id) return;
-
-        // Must be in a thread
-        if (!message.channel || !message.channel.isThread()) return;
-
-        // Must be a pin reaction
-        if (emoji.name !== '📌') return;
-
-        // This must be the owner of the thread or someone who has permission to pin messages
-        const isThreadOwner = threadOwners[message.channel.id as keyof typeof threadOwners] === user.id;
-        const hasPermissions = message.guild?.members.resolve(user.id)?.permissions.has('MANAGE_MESSAGES');
-        if (!isThreadOwner && !hasPermissions) return;
+        if (!this.hasPermission(message, emoji, user)) return;
 
         // Unpin message
         try {
