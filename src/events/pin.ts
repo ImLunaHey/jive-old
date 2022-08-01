@@ -36,7 +36,8 @@ export class Pin {
 
     @On('messageReactionAdd')
     async messageReactionAdd([{ message, emoji }, user]: ArgsOf<'messageReactionAdd'>): Promise<void> {
-        if (!this.hasPermission(message, emoji, user)) return;
+        const hasPermission = await this.hasPermission(message, emoji, user);
+        if (!hasPermission) return;
 
         // Pin message
         try {
@@ -50,7 +51,8 @@ export class Pin {
 
     @On('messageReactionRemove')
     async messageReactionRemove([{ message, emoji }, user]: ArgsOf<'messageReactionRemove'>): Promise<void> {
-        if (!this.hasPermission(message, emoji, user)) return;
+        const hasPermission = await this.hasPermission(message, emoji, user);
+        if (!hasPermission) return;
 
         // Unpin message
         try {
