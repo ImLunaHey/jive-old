@@ -1,6 +1,6 @@
 import { Discord, On } from 'discordx';
 import type { ArgsOf } from 'discordx';
-import { logger } from '../common/logger';
+import { logger } from '../common/logger.js';
 
 const threadOwners = {
     '979291390162894918': '802440261543264288',
