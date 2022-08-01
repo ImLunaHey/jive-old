@@ -18,11 +18,12 @@ export class Pin {
         if (!message.channel || !message.channel.isThread()) return;
 
         // Must be a pin reaction
-        if (emoji.name !== ':pushpin:') return;
+        if (emoji.name !== '📌') return;
 
         // This must be the owner of the thread or someone who has permission to pin messages
-        if (threadOwners[message.channel.id as keyof typeof threadOwners] !== user.id) return;
-        if (!message.guild?.members.resolve(user.id)?.permissions.has('MANAGE_MESSAGES')) return;
+        const isThreadOwner = threadOwners[message.channel.id as keyof typeof threadOwners] === user.id;
+        const hasPermissions = message.guild?.members.resolve(user.id)?.permissions.has('MANAGE_MESSAGES');
+        if (!isThreadOwner && !hasPermissions) return;
 
         // Pin message
         try {
@@ -43,11 +44,12 @@ export class Pin {
         if (!message.channel || !message.channel.isThread()) return;
 
         // Must be a pin reaction
-        if (emoji.name !== ':pushpin:') return;
+        if (emoji.name !== '📌') return;
 
         // This must be the owner of the thread or someone who has permission to pin messages
-        if (threadOwners[message.channel.id as keyof typeof threadOwners] !== user.id) return;
-        if (!message.guild?.members.resolve(user.id)?.permissions.has('MANAGE_MESSAGES')) return;
+        const isThreadOwner = threadOwners[message.channel.id as keyof typeof threadOwners] === user.id;
+        const hasPermissions = message.guild?.members.resolve(user.id)?.permissions.has('MANAGE_MESSAGES');
+        if (!isThreadOwner && !hasPermissions) return;
 
         // Unpin message
         try {
