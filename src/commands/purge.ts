@@ -36,8 +36,10 @@ export class PurgeCommand {
             await interaction.guild.members.fetch();
 
             this.isPurgeRunning = true;
+            
+            logger.debug('Checking %s members', interaction.guild.members.cache.size);
       
-            const totalMembers = interaction.guild.members.cache.filter(member => {
+            const membersToPurge = interaction.guild.members.cache.filter(member => {
                 // false - Member is a bot
                 if (member.user.bot) return false;
                 if (member.roles.cache.find(role => role.name.toLowerCase().includes('bot')) !== undefined) return false;
@@ -58,22 +60,32 @@ export class PurgeCommand {
                 if (member.roles.cache.size === 1) return true;
 
                 // true - Member hasn't accepted the rules
-                if (member.roles.cache.find(role => role.name.toLowerCase().startsWith('just joined')) !== undefined) return true;
+                if (member.roles.cache.find(role => role.name.toLowerCase().startsWith('unverified')) !== undefined) return true;
 
                 // true - Member has no level role
                 if (member.roles.cache.find(role => role.name.toLowerCase().startsWith('level')) === undefined) return true;
+                
+                 // true - Member's level is high enough to verify yet they haven't
+                if (member.roles.cache.find(role => {
+                    const roleName = role.name.toLowerCase();
+                    const levelRole = roleName.startsWith('level');
+                    if (!levelRole) return false;
+                    const level = Number(roleName.split('level ')[1]);
+                    return level >= 1;
+                }) !== undefined) return true;
 
                 // false - member didn't meet any of the criteria
                 return false;
             });
-            const purgeableMembers = this.getRandomItems([...totalMembers.values()], 50);
-            await interaction.reply(`${dryRun ? '[DRY-RUN] ' : ''}Kicking ${purgeableMembers.length}/${totalMembers.size} members, please stand by…`);
-            await Promise.allSettled(purgeableMembers.map(async member => {
-                logger.debug(`${dryRun ? '[DRY-RUN] ' : ''}Kicking ${member.displayName} - ${prettyMilliseconds(Date.now() - (member.joinedTimestamp ?? 0))} - ${member.roles.cache.map(role => role.name).join(', ')}`);        
-                if (!dryRun) await member.kick();
-                logger.debug(`${dryRun ? '[DRY-RUN] ' : ''}Kicked ${member.displayName} - ${prettyMilliseconds(Date.now() - (member.joinedTimestamp ?? 0))} - ${member.roles.cache.map(role => role.name).join(', ')}`);    
-            }));
-            await interaction.editReply(`${dryRun ? '[DRY-RUN] ' : ''}Kicked ${purgeableMembers.length}/${totalMembers.size} members. :white_check_mark:`);
+            const purgeableMembers = this.getRandomItems([...membersToPurge.values()], 500);
+            await interaction.reply(`Kicking ${purgeableMembers.length} members, please stand by…`);
+            if (!dryRun) {
+                await Promise.allSettled(purgeableMembers.map(async member => {
+                    await member.kick();
+                    logger.debug(`Kicked ${member.displayName} - ${prettyMilliseconds(Date.now() - (member.joinedTimestamp ?? 0))} - ${member.roles.cache.map(role => role.name).join(', ')}`);    
+                }));
+            }
+            await interaction.editReply(`Kicked ${purgeableMembers.length} members. :white_check_mark:`);
         } catch (error: unknown) {
             if (!(error instanceof Error)) throw new Error(format('Unknown Error "%s"', error));
             if (error instanceof CommandError) return interaction.reply({
