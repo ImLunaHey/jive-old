@@ -77,11 +77,13 @@ export class PurgeCommand {
                 // false - member didn't meet any of the criteria
                 return false;
             });
+            
+            const memberToPurgeCount = [...membersToPurge.values()].length;
 
             if (dryRun) {
-                await interaction.reply(`We can kick ${membersToPurge.values().length}/${interaction.guild.members.cache.size} members`);
+                await interaction.reply(`We can kick ${memberToPurgeCount}/${interaction.guild.members.cache.size} members`);
             } else {
-                logger.debug('We can kick %s/%s members', membersToPurge.values().length, interaction.guild.members.cache.size);
+                logger.debug('We can kick %s/%s members', memberToPurgeCount, interaction.guild.members.cache.size);
                 const purgeableMembers = this.getRandomItems([...membersToPurge.values()], 500);
                 await interaction.reply(`Kicking ${purgeableMembers.length} members, please stand by…`);
                 await Promise.allSettled(purgeableMembers.map(async member => {
