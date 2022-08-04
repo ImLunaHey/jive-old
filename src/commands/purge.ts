@@ -77,15 +77,19 @@ export class PurgeCommand {
                 // false - member didn't meet any of the criteria
                 return false;
             });
-            const purgeableMembers = this.getRandomItems([...membersToPurge.values()], 500);
-            await interaction.reply(`Kicking ${purgeableMembers.length} members, please stand by…`);
-            if (!dryRun) {
+
+            if (dryRun) {
+                await interaction.editReply(`We can kick ${membersToPurge.values().length}/${interaction.guild.members.cache.size} members`);
+            } else {
+                logger.debug('We can kick %s/%s members', membersToPurge.values().length, interaction.guild.members.cache.size);
+                const purgeableMembers = this.getRandomItems([...membersToPurge.values()], 500);
+                await interaction.reply(`Kicking ${purgeableMembers.length} members, please stand by…`);
                 await Promise.allSettled(purgeableMembers.map(async member => {
                     await member.kick();
                     logger.debug(`Kicked ${member.displayName} - ${prettyMilliseconds(Date.now() - (member.joinedTimestamp ?? 0))} - ${member.roles.cache.map(role => role.name).join(', ')}`);    
-                }));
+                }));     
+                await interaction.editReply(`Kicked ${purgeableMembers.length} members. :white_check_mark:`);
             }
-            await interaction.editReply(`Kicked ${purgeableMembers.length} members. :white_check_mark:`);
         } catch (error: unknown) {
             if (!(error instanceof Error)) throw new Error(format('Unknown Error "%s"', error));
             if (error instanceof CommandError) return interaction.reply({
