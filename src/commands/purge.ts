@@ -79,7 +79,7 @@ export class PurgeCommand {
             });
 
             if (dryRun) {
-                await interaction.editReply(`We can kick ${membersToPurge.values().length}/${interaction.guild.members.cache.size} members`);
+                await interaction.reply(`We can kick ${membersToPurge.values().length}/${interaction.guild.members.cache.size} members`);
             } else {
                 logger.debug('We can kick %s/%s members', membersToPurge.values().length, interaction.guild.members.cache.size);
                 const purgeableMembers = this.getRandomItems([...membersToPurge.values()], 500);
