@@ -63,15 +63,6 @@ export class PurgeCommand {
                 // true - Member has no level role
                 if (member.roles.cache.find(role => role.name.toLowerCase().startsWith('level')) === undefined) return true;
 
-                // true - Member's level is high enough to verify yet they haven't
-                if (member.roles.cache.find(role => {
-                    const roleName = role.name.toLowerCase();
-                    const levelRole = roleName.startsWith('level');
-                    if (!levelRole) return false;
-                    const level = Number(roleName.split('level ')[1]);
-                    return level >= 1;
-                }) !== undefined) return true;
-
                 // false - member didn't meet any of the criteria
                 return false;
             });
