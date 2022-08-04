@@ -45,7 +45,7 @@ export class PurgeCommand {
                 if (member.roles.cache.find(role => role.name.toLowerCase().includes('bot')) !== undefined) return false;
                 
                 // false - Member is verified
-                if (member.roles.cache.find(role => role.name.toLowerCase().includes('verified')) !== undefined) return false;
+                if (member.roles.cache.find(role => role.name.toLowerCase().startsWith('verified')) !== undefined) return false;
 
                 // false - Member has SFW verification
                 if (member.roles.cache.find(role => role.name.toLowerCase().includes('[sfw only]')) !== undefined) return false;
