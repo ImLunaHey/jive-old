@@ -1,6 +1,8 @@
 import { Intents } from 'discord.js';
 import { createDiscordClient } from './common/discord-client.js';
-import { name } from '../package.json' assert { type: 'json' };
+import pkg from '../package.json' assert { type: 'json' };
+
+const { name } = pkg;
 
 export const client = createDiscordClient(name, {
     intents: [

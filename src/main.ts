@@ -4,8 +4,10 @@ import { logger } from './common/logger.js';
 import { environment, botToken } from './common/config.js';
 import { initCronJobs } from '@reflet/cron';
 import { ChatRevival } from './jobs/chat-revival.js';
-import { name } from '../package.json' assert { type: 'json' };
+import pkg from '../package.json' assert { type: 'json' };
 import { client } from './client.js';
+
+const { name } = pkg;
 
 const main = async () => {
   logger.info('Starting "%s" in "%s" mode.', name, environment);
