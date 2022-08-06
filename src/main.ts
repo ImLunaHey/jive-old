@@ -3,7 +3,7 @@ import { dirname as dirnameImporter, importx as importFiles } from '@discordx/im
 import { logger } from './common/logger.js';
 import { environment, botToken } from './common/config.js';
 import { initCronJobs } from '@reflet/cron';
-import { Auctions } from './jobs/auctions.js';
+import { ChatRevival } from './jobs/chat-revival.js';
 import { name } from '../package.json' assert { type: 'json' };
 import { client } from './client.js';
 
@@ -17,7 +17,7 @@ const main = async () => {
   await importFiles(`${dirnameImporter(import.meta.url)}/{events,commands,api}/**/*.{ts,js}`);
 
   // Start background jobs
-  const jobs = initCronJobs(Auctions);
+  const jobs = initCronJobs(ChatRevival);
   jobs.startAll();
 
   // Connect to the discord gateway
