@@ -1,14 +1,13 @@
 import 'reflect-metadata';
 import { dirname as dirnameImporter, importx as importFiles } from '@discordx/importer';
 import { logger } from './common/logger.js';
-import { createDiscordClient } from './common/discord-client.js';
 import { environment, botToken } from './common/config.js';
-import { Intents } from 'discord.js';
-import pkg from '../package.json' assert { type: 'json' };
+import { initCronJobs } from '@reflet/cron';
+import { Auctions } from './jobs/auctions.js';
+import { name } from '../package.json' assert { type: 'json' };
+import { client } from './client.js';
 
 const main = async () => {
-  const name = pkg.name;
-
   logger.info('Starting "%s" in "%s" mode.', name, environment);
 
   // Check we have everything we need to start
@@ -17,17 +16,9 @@ const main = async () => {
   // Load all the events, commands and api
   await importFiles(`${dirnameImporter(import.meta.url)}/{events,commands,api}/**/*.{ts,js}`);
 
-  // Create the discord.js client
-  const client = createDiscordClient(name, {
-    intents: [
-      Intents.FLAGS.GUILD_MEMBERS,
-      Intents.FLAGS.GUILDS,
-      Intents.FLAGS.GUILD_MESSAGES,
-      Intents.FLAGS.GUILD_MESSAGE_REACTIONS
-    ],
-    partials: ['MESSAGE', 'CHANNEL', 'REACTION'],
-    prefix: `$${name}`
-  });
+  // Start background jobs
+  const jobs = initCronJobs(Auctions);
+  jobs.startAll();
 
   // Connect to the discord gateway
   await client.login(botToken);
