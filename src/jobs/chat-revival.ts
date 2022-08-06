@@ -18,7 +18,7 @@ export class ChatRevival {
             const channel = guild.channels.resolve('957109896313184316');
             if (!channel?.isText()) return;
             await channel.send({
-                content: '<@1005378317563736105>',
+                content: '<@&1005378317563736105>',
                 embeds: [new MessageEmbed({
                     description: `If you don't know what to talk about, here's a random topic. To generate these manually use \`/topic\`.\n**__${getRandomTopic()}__**`
                 })]

@@ -13,7 +13,7 @@ export class ChatRevival {
     ) {
         try {
             await interaction.reply({
-                content: '<@1005378317563736105>',
+                content: '<@&1005378317563736105>',
                 embeds: [new MessageEmbed({
                     description: `If you don't know what to talk about, here's a random topic. To generate these manually use \`/topic\`.\n**__${getRandomTopic()}__**`
                 })]
