@@ -1,3 +1,5 @@
+import { MessageEmbed } from "discord.js";
+
 const topics = [
     'Have you ever been to a five star resort?',
     'Have you ever kept a secret for more than a decade?',
@@ -40,3 +42,15 @@ const topics = [
 ];
 
 export const getRandomTopic = () => topics[Math.floor((Math.random() * topics.length))];
+
+export const createRandomTopicMessage = () => ({
+    content: '<@&1005378317563736105>',
+    embeds: [new MessageEmbed({
+        title: 'Chat Revival',
+        description: `If you don't know what to talk about, here's a random topic.\n\n**__${getRandomTopic()}__**`,
+        footer: {
+            text: `To generate these manually use \`/revive-chat\`.`
+        },
+        color: 'LUMINOUS_VIVID_PINK'
+    })]
+});
